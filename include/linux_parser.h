@@ -12,6 +12,7 @@ const std::string kCmdlineFilename{"/cmdline"};
 const std::string kCpuinfoFilename{"/cpuinfo"};
 const std::string kStatusFilename{"/status"};
 const std::string kStatFilename{"/stat"};
+const std::string kStatMFilename{"/statm"};
 const std::string kUptimeFilename{"/uptime"};
 const std::string kMeminfoFilename{"/meminfo"};
 const std::string kVersionFilename{"/version"};
@@ -20,7 +21,10 @@ const std::string kPasswordPath{"/etc/passwd"};
 
 // System
 float MemoryUtilization();
+float CachedMemoryUtilization();
+float BufferMemoryUtilization();
 long UpTime();
+long IdleTime();
 std::vector<int> Pids();
 int TotalProcesses();
 int RunningProcesses();
@@ -30,15 +34,15 @@ std::string Kernel();
 // CPU
 enum CPUStates {
   kUser_ = 0,
-  kNice_,
-  kSystem_,
-  kIdle_,
-  kIOwait_,
-  kIRQ_,
-  kSoftIRQ_,
-  kSteal_,
-  kGuest_,
-  kGuestNice_
+  kNice_ = 1,
+  kSystem_ = 2,
+  kIdle_ = 3,
+  kIOwait_ = 4,
+  kIRQ_ = 5,
+  kSoftIRQ_ = 6,
+  kSteal_ = 7,
+  kGuest_ = 8,
+  kGuestNice_ = 9
 };
 std::vector<std::string> CpuUtilization();
 long Jiffies();
