@@ -2,11 +2,11 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <set>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 #include "linux_parser.h"
 #include "process.h"
@@ -14,9 +14,9 @@
 
 using std::set;
 using std::size_t;
+using std::sort;
 using std::string;
 using std::vector;
-using std::sort;
 
 System::System() {
   cpu_ = Processor{};
@@ -32,13 +32,8 @@ System::System() {
 Processor& System::Cpu() { return cpu_; }
 
 vector<Process>& System::Processes() {
-  sort(
-      processes_.begin(),
-      processes_.end(),
-      [] (const Process& a, const Process& b) {
-          return b < a;
-      }
-  );
+  sort(processes_.begin(), processes_.end(),
+       [](const Process& a, const Process& b) { return b < a; });
 
   return processes_;
 }

@@ -19,7 +19,8 @@ float Processor::Utilization() {
   float cumulative_total = total_time - prev_total_time;
   float cumulative_idle = idle - prev_idle_;
 
-  float pct_utilization = (cumulative_total - cumulative_idle) / cumulative_total;
+  float pct_utilization =
+      (cumulative_total - cumulative_idle) / cumulative_total;
 
   prev_working_ = working;
   prev_idle_ = idle;

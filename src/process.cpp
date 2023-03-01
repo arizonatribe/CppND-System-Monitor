@@ -1,9 +1,9 @@
 #include "process.h"
 
 #include <unistd.h>
-#include <iomanip>
 
 #include <cctype>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string>

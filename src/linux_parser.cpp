@@ -4,16 +4,16 @@
 #include <math.h>
 #include <unistd.h>
 
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
 using LinuxParser::CPUStates;
+using std::size_t;
 using std::stof;
 using std::stoi;
 using std::stol;
-using std::size_t;
 using std::string;
 using std::to_string;
 using std::vector;
@@ -224,8 +224,6 @@ vector<string> LinuxParser::CpuUtilization() {
   if (filestream.is_open()) {
     while (std::getline(filestream, line)) {
       if (line.find("cpu ") == 0) {
-      // TODO if using all CPUs
-      // if (line.find("cpu") == 0) {
         line.replace(0, 3, "");
         break;
       }
@@ -317,7 +315,7 @@ string LinuxParser::Command(int pid) {
       is_blank_cmdline = false;
       break;
     }
-  } 
+  }
 
   if (is_blank_cmdline) {
     std::ifstream stream(kProcDirectory + to_string(pid) + kCommFilename);
