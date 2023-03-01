@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "linux_parser.h"
 #include "process.h"
@@ -15,27 +16,32 @@ using std::set;
 using std::size_t;
 using std::string;
 using std::vector;
-/*You need to complete the mentioned TODOs in order to satisfy the rubric
-criteria "The student will be able to extract and display basic data about the
-system."
-
-You need to properly format the uptime. Refer to the comments mentioned in
-format. cpp for formatting the uptime.*/
+using std::sort;
 
 System::System() {
-  // TODO : Determine private member variables which are useful for Processor
-  // instances to keep
   cpu_ = Processor{};
 
   processes_ = {};
   for (int pid : LinuxParser::Pids()) {
-    processes_.emplace_back(Process(pid));
+    if (LinuxParser::IsRunning(pid)) {
+      processes_.emplace_back(Process(pid));
+    }
   }
 }
 
 Processor& System::Cpu() { return cpu_; }
 
-vector<Process>& System::Processes() { return processes_; }
+vector<Process>& System::Processes() {
+  sort(
+      processes_.begin(),
+      processes_.end(),
+      [] (const Process& a, const Process& b) {
+          return b < a;
+      }
+  );
+
+  return processes_;
+}
 
 std::string System::Kernel() { return LinuxParser::Kernel(); }
 

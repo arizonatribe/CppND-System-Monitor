@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <sstream>
+#include <iomanip>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@ using LinuxParser::CPUStates;
 using std::stof;
 using std::stoi;
 using std::stol;
+using std::size_t;
 using std::string;
 using std::to_string;
 using std::vector;
@@ -73,7 +75,7 @@ vector<int> LinuxParser::Pids() {
 }
 
 float LinuxParser::MemoryUtilization() {
-  long total_memory, free_memory;
+  float total_memory, free_memory;
 
   string line;
   string key;
@@ -86,19 +88,22 @@ float LinuxParser::MemoryUtilization() {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
         if (key == "MemTotal") {
-          total_memory = stol(value);
+          total_memory = stof(value);
         } else if (key == "MemFree") {
-          free_memory = stol(value);
+          free_memory = stof(value);
         }
       }
     }
   }
 
-  return total_memory - free_memory;
+  float cached = LinuxParser::CachedMemory();
+  float buffered = LinuxParser::BufferMemory();
+
+  return (total_memory - free_memory - cached - buffered) / total_memory;
 }
 
-float LinuxParser::CachedMemoryUtilization() {
-  long cached, sreclaimable, shmem;
+float LinuxParser::CachedMemory() {
+  float cached, sreclaimable, shmem;
 
   string line;
   string key;
@@ -111,11 +116,11 @@ float LinuxParser::CachedMemoryUtilization() {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
         if (key == "Cached") {
-          cached = stol(value);
+          cached = stof(value);
         } else if (key == "SReclaimable") {
-          sreclaimable = stol(value);
+          sreclaimable = stof(value);
         } else if (key == "Shmem") {
-          shmem = stol(value);
+          shmem = stof(value);
         }
       }
     }
@@ -124,7 +129,7 @@ float LinuxParser::CachedMemoryUtilization() {
   return cached + sreclaimable - shmem;
 }
 
-float LinuxParser::BufferMemoryUtilization() {
+float LinuxParser::BufferMemory() {
   long buffers;
 
   string line;
@@ -138,7 +143,7 @@ float LinuxParser::BufferMemoryUtilization() {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
         if (key == "Buffers") {
-          buffers = stol(value);
+          buffers = stof(value);
         }
       }
     }
@@ -188,7 +193,7 @@ long LinuxParser::ActiveJiffies(int pid) {
   string _pid, _comm, _state, _ppid, _pgrp, _session, _tty_nr, _tpgid, _flags,
       _minflt, _cminflt, _majflt, _cmajflt, utime, stime, cutime, cstime;
 
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  std::ifstream stream(kProcDirectory + to_string(pid) + kStatFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
@@ -218,7 +223,9 @@ vector<string> LinuxParser::CpuUtilization() {
   std::ifstream filestream(kProcDirectory + kStatFilename);
   if (filestream.is_open()) {
     while (std::getline(filestream, line)) {
-      if (line.rfind("cpu", 0)) {
+      if (line.find("cpu ") == 0) {
+      // TODO if using all CPUs
+      // if (line.find("cpu") == 0) {
         line.replace(0, 3, "");
         break;
       }
@@ -253,7 +260,7 @@ vector<string> LinuxParser::CpuUtilization() {
     }
   }
 
-  return {std::to_string(working_time), std::to_string(non_working_time)};
+  return {to_string(working_time), to_string(non_working_time)};
 }
 
 int LinuxParser::TotalProcesses() {
@@ -293,23 +300,31 @@ int LinuxParser::RunningProcesses() {
 }
 
 string LinuxParser::Command(int pid) {
-  string _pid, comm;
+  string comm;
   string line;
 
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kCmdlineFilename);
+  std::ifstream stream(kProcDirectory + to_string(pid) + kCmdlineFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
     linestream >> comm;
   }
 
-  if (comm.empty()) {
-    std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  bool is_blank_cmdline = true;
+  int len = line.length();
+  for (int i = 0; i < len; i++) {
+    if (line[i] != ' ') {
+      is_blank_cmdline = false;
+      break;
+    }
+  } 
+
+  if (is_blank_cmdline) {
+    std::ifstream stream(kProcDirectory + to_string(pid) + kCommFilename);
     if (stream.is_open()) {
       std::getline(stream, line);
       std::istringstream linestream(line);
-      string _pid, comm;
-      linestream >> _pid >> comm;
+      linestream >> comm;
     }
   }
 
@@ -322,25 +337,30 @@ string LinuxParser::Ram(int pid) {
   string memory;
   string line;
 
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatMFilename);
+  std::ifstream stream(kProcDirectory + to_string(pid) + kStatMFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
     linestream >> memory;
   }
 
-  return std::to_string(floor(stof(memory) / 1000)) + " MB";
+  /*
+   * Learned about formatting strings to certain decimal precisions here:
+   *   https://stackoverflow.com/questions/29200635/convert-float-to-string-with-precision-number-of-decimal-digits-specified
+   */
+  std::stringstream mem_megs;
+  mem_megs << std::fixed << std::setprecision(1) << stof(memory) / 1000;
+  return mem_megs.str();
 }
 
 string LinuxParser::Uid(int pid) {
   string line;
   string key;
   string value;
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatusFilename);
+  std::ifstream stream(kProcDirectory + to_string(pid) + kStatusFilename);
   if (stream.is_open()) {
     while (std::getline(stream, line)) {
       std::replace(line.begin(), line.end(), ':', ' ');
-      std::replace(line.begin(), line.end(), ' ', '-');
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
         if (key == "Uid") {
@@ -353,7 +373,7 @@ string LinuxParser::Uid(int pid) {
 }
 
 string LinuxParser::User(int pid) {
-  string username, _pwd_flag, uid, _gid, name;
+  string username, _pwd_flag, uid;
   string line;
 
   string real_uid = LinuxParser::Uid(pid);
@@ -364,10 +384,9 @@ string LinuxParser::User(int pid) {
       std::replace(line.begin(), line.end(), ' ', '_');
       std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line);
-      while (linestream >> username >> _pwd_flag >> uid >> _gid >> name) {
+      while (linestream >> username >> _pwd_flag >> uid) {
         if (uid == real_uid) {
-          std::replace(name.begin(), name.end(), '_', ' ');
-          return !name.empty() ? username + " (" + name + ")" : username;
+          return username;
         }
       }
     }
@@ -385,16 +404,33 @@ long LinuxParser::UpTime(int pid) {
 
   long system_uptime = LinuxParser::UpTime();
 
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  std::ifstream stream(kProcDirectory + to_string(pid) + kStatFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
+
     linestream >> _pid >> _comm >> _state >> _ppid >> _pgrp >> _session >>
         _tty_nr >> _tpgid >> _flags >> _minflt >> _cminflt >> _majflt >>
         _cmajflt >> _utime >> _stime >> _cutime >> _cstime >> _priority >>
         _nice >> _num_threads >> _itrealvalue >> starttime;
+
     proc_uptime = stol(starttime);
   }
 
   return system_uptime - (proc_uptime / sysconf(_SC_CLK_TCK));
+}
+
+bool LinuxParser::IsRunning(int pid) {
+  string _pid, _comm, state;
+
+  std::ifstream stream(kProcDirectory + to_string(pid) + kStatFilename);
+  if (stream.is_open()) {
+    string line;
+    std::getline(stream, line);
+    std::istringstream linestream(line);
+    linestream >> _pid >> _comm >> state;
+    return state == "R" || state == "D" || state == "S";
+  }
+
+  return false;
 }

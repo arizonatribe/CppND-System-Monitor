@@ -1,6 +1,7 @@
 #include "process.h"
 
 #include <unistd.h>
+#include <iomanip>
 
 #include <cctype>
 #include <sstream>
@@ -25,9 +26,10 @@ Process::Process(int pid) {
 int Process::Pid() { return pid_; }
 
 float Process::CpuUtilization() const {
-  long total_time = LinuxParser::ActiveJiffies(pid_);
-  long total_system_time = LinuxParser::Jiffies();
-  return 100.0 * (total_system_time - total_time);
+  float total_time = LinuxParser::ActiveJiffies(pid_) * 1.0;
+  long seconds_uptime = LinuxParser::UpTime(pid_);
+  auto hz = sysconf(_SC_CLK_TCK);
+  return total_time / hz / seconds_uptime;
 }
 
 string Process::Command() { return LinuxParser::Command(pid_); }

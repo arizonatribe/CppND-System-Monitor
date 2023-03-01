@@ -13,11 +13,13 @@ float Processor::Utilization() {
   float working = stof(stats[0]);
   float idle = stof(stats[1]);
 
-  float total_working_time = working - prev_working_;
-  float total_idle_time = idle - prev_idle_;
+  float total_time = working + idle;
+  float prev_total_time = prev_working_ + prev_idle_;
 
-  float pct_utilization =
-      (total_working_time - total_idle_time) / total_working_time;
+  float cumulative_total = total_time - prev_total_time;
+  float cumulative_idle = idle - prev_idle_;
+
+  float pct_utilization = (cumulative_total - cumulative_idle) / cumulative_total;
 
   prev_working_ = working;
   prev_idle_ = idle;
